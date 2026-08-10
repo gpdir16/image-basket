@@ -1,0 +1,9 @@
+{
+    "name": "image-basket",
+    "version": "1.0.0",
+    "scripts": {
+        "build": "bunx web-ext build --source-dir . --overwrite-dest",
+        "lint": "bunx web-ext lint --source-dir .",
+        "run": "bunx web-ext run --source-dir ."
+    }
+}
