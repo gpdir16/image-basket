@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>image-basket</title>
+        <style>
+            /* Firefox Nova 토큰 */
+            :root {
+                color-scheme: dark;
+                --panel-bg: #42414d; /* --panel-background-color dark */
+                --text: #fbfbfe;
+                --text-deemphasized: color-mix(in srgb, currentColor 69%, transparent);
+                --accent: #b89cff; /* --color-accent-primary dark: violet-30 */
+                --accent-hover: #d4c1ff;
+                --accent-active: #eaddff;
+                --accent-text: #252428;
+                --btn-bg: color-mix(in srgb, currentColor 13%, transparent);
+                --btn-hover: color-mix(in srgb, currentColor 17%, transparent);
+                --destructive: #ff8998; /* red-30 */
+                --destructive-hover: #ffb6bf;
+                --radius-pill: 999px;
+                --radius-menu: 12px; /* macOS 메뉴 행 radius (menu.css) */
+                --radius-thumb: 8px;
+                --divider: color-mix(in srgb, currentColor 12%, transparent);
+                --focus: 2px solid var(--accent);
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+                width: 360px;
+                background: var(--panel-bg);
+                color: var(--text);
+                font:
+                    13px/1.45 system-ui,
+                    -apple-system,
+                    sans-serif;
+            }
+            button {
+                font: inherit;
+                border: none;
+                border-radius: var(--radius-pill);
+                background: transparent;
+                color: inherit;
+                cursor: pointer;
+                user-select: none;
+                transition:
+                    background-color 0.1s ease,
+                    color 0.1s ease;
+            }
+            button:disabled {
+                opacity: 0.5;
+                cursor: default;
+            }
+            button:focus-visible {
+                outline: var(--focus);
+                outline-offset: 2px;
+            }
+            button[hidden] {
+                display: none;
+            }
+
+            header {
+                padding: 12px 16px 10px;
+            }
+
+            /* 줄 1: 제목 */
+            .title-row {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                margin-bottom: 10px;
+            }
+            .logo {
+                font-size: 14px;
+                line-height: 1;
+            }
+            h1 {
+                margin: 0;
+                flex: 1;
+                min-width: 0;
+                font-size: 14px;
+                font-weight: 600;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .count {
+                color: var(--text-deemphasized);
+                font-size: 11px;
+                font-weight: 400;
+                margin-left: 4px;
+            }
+            .count:empty {
+                display: none;
+            }
+            #clear {
+                font-size: 11px;
+                padding: 5px 10px;
+                color: var(--destructive);
+            }
+            #clear:hover {
+                background: color-mix(in srgb, var(--destructive) 15%, transparent);
+                color: var(--destructive-hover);
+            }
+
+            /* 줄 2: 동작 버튼 3개 — 유형 / 범위 / ZIP 다운로드 */
+            .menu-btns {
+                display: flex;
+                gap: 6px;
+            }
+            .menu-wrap {
+                position: relative;
+            }
+            .menu-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 5px;
+                padding: 6px 12px;
+                font-size: 12px;
+                background: var(--btn-bg);
+            }
+            .menu-btn:hover {
+                background: var(--btn-hover);
+            }
+            .menu-btn .arrow {
+                display: inline-flex;
+                opacity: 0.65;
+            }
+            .menu-btn .arrow svg {
+                display: block;
+            }
+            #zipAll {
+                background: var(--accent);
+                color: var(--accent-text);
+                font-weight: 600;
+            }
+            #zipAll:hover {
+                background: var(--accent-hover);
+            }
+            #zipAll:active {
+                background: var(--accent-active);
+            }
+
+            /* 드롭다운 — Firefox 메뉴 팝업 패턴: 테두리 없음, 그림자만, 네이티브 checkbox/radio 행 */
+            .menu {
+                position: absolute;
+                top: calc(100% + 6px);
+                left: 0;
+                z-index: 20;
+                display: none;
+                padding: 4px;
+                border-radius: 12px;
+                width: max-content;
+                min-width: 132px;
+                background: color-mix(in srgb, var(--panel-bg) 88%, white 12%);
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            }
+            .menu.open {
+                display: block;
+                animation: menuIn 0.1s ease;
+            }
+            @keyframes menuIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(-4px) scale(0.98);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0) scale(1);
+                }
+            }
+            .menu-wrap.right .menu {
+                left: auto;
+                right: 0;
+            }
+            .menu-row {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                width: 100%;
+                padding: 5px 10px;
+                border-radius: 8px;
+                font-size: 12px;
+                cursor: pointer;
+                text-align: left;
+                transition: background-color 0.1s ease;
+            }
+            .menu-row:hover {
+                background: var(--btn-hover);
+            }
+            .menu-row input {
+                accent-color: var(--accent);
+                margin: 0;
+                flex: none;
+            }
+            .menu-row input:focus {
+                outline: none;
+            }
+            .menu-row:has(input:focus-visible) {
+                outline: var(--focus);
+                outline-offset: -2px;
+            }
+
+            /* 상태 알림 — 딤 오버레이 + 중앙 다이얼로그 (확인 버튼으로 닫기) */
+            #toast {
+                position: fixed;
+                inset: 0;
+                z-index: 100;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(0, 0, 0, 0.45);
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.15s ease;
+            }
+            #toast.show {
+                opacity: 1;
+                pointer-events: auto;
+            }
+            #toast .box {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+                max-width: 280px;
+                padding: 16px 18px;
+                text-align: center;
+                font-size: 13px;
+                background: color-mix(in srgb, var(--panel-bg) 88%, white 12%);
+                border-radius: 12px;
+                box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+            }
+            #toastOk {
+                padding: 5px 18px;
+                background: var(--accent);
+                color: var(--accent-text);
+                font-weight: 600;
+            }
+            #toastOk:hover {
+                background: var(--accent-hover);
+            }
+
+            .list-wrap {
+                border-top: 1px solid var(--divider);
+            }
+            #list {
+                list-style: none;
+                margin: 0;
+                padding: 6px 8px 8px;
+                max-height: 400px;
+                overflow-y: auto;
+                scrollbar-width: thin;
+            }
+            #list li {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 4px 11px;
+                border-radius: var(--radius-menu);
+                transition: background-color 0.1s ease;
+            }
+            #list li:not(.empty):hover {
+                background: var(--btn-hover);
+            }
+            #list li.empty {
+                flex-direction: column;
+                justify-content: center;
+                gap: 4px;
+                color: var(--text-deemphasized);
+                text-align: center;
+                white-space: pre-line;
+                padding: 28px 12px;
+                font-size: 12.5px;
+            }
+            .thumb {
+                width: 40px;
+                height: 40px;
+                flex: none;
+                border-radius: var(--radius-thumb);
+                object-fit: cover;
+                background: color-mix(in srgb, currentColor 8%, transparent);
+            }
+            .thumb.icon {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 17px;
+            }
+            .info {
+                flex: 1;
+                min-width: 0;
+            }
+            .name {
+                font-size: 13px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .meta {
+                color: var(--text-deemphasized);
+                font-size: 11px;
+                margin-top: 1px;
+            }
+            #list li button {
+                flex: none;
+                padding: 4px 10px;
+                font-size: 11px;
+                min-height: 28px;
+                background: var(--btn-bg);
+            }
+            #list li button:hover {
+                background: var(--btn-hover);
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <div class="title-row">
+                <span class="logo">🛍</span>
+                <h1>image-basket<span class="count" id="count"></span></h1>
+                <button id="clear" data-i18n="clear">Clear</button>
+            </div>
+            <div class="menu-btns">
+                <div class="menu-wrap">
+                    <button class="menu-btn" id="typeBtn" aria-haspopup="menu" aria-expanded="false">
+                        <span id="typeLabel">Image·Video·Audio</span
+                        ><span class="arrow"
+                            ><svg width="10" height="6" viewBox="0 0 10 6" fill="none">
+                                <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg
+                        ></span>
+                    </button>
+                    <div class="menu" id="typeMenu">
+                        <label class="menu-row"><input type="checkbox" data-type="image" checked /><span data-i18n="typeImage">Image</span></label>
+                        <label class="menu-row"><input type="checkbox" data-type="video" checked /><span data-i18n="typeVideo">Video</span></label>
+                        <label class="menu-row"><input type="checkbox" data-type="audio" checked /><span data-i18n="typeAudio">Audio</span></label>
+                    </div>
+                </div>
+                <div class="menu-wrap">
+                    <button class="menu-btn" id="filterBtn" aria-haspopup="menu" aria-expanded="false">
+                        <span id="filterLabel">This page</span
+                        ><span class="arrow"
+                            ><svg width="10" height="6" viewBox="0 0 10 6" fill="none">
+                                <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg
+                        ></span>
+                    </button>
+                    <div class="menu" id="filterMenu">
+                        <label class="menu-row"
+                            ><input type="radio" name="f" value="page" checked /><span data-i18n="filterPage">This page</span></label
+                        >
+                        <label class="menu-row"><input type="radio" name="f" value="tab" /><span data-i18n="filterTab">This tab</span></label>
+                        <label class="menu-row"><input type="radio" name="f" value="all" /><span data-i18n="filterAll">All</span></label>
+                    </div>
+                </div>
+                <div class="menu-wrap right">
+                    <button class="menu-btn" id="zipAll" aria-haspopup="menu" aria-expanded="false">
+                        <span data-i18n="zipDownload">Download ZIP</span
+                        ><span class="arrow"
+                            ><svg width="10" height="6" viewBox="0 0 10 6" fill="none">
+                                <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg
+                        ></span>
+                    </button>
+                    <div class="menu" id="zipMenu">
+                        <button class="menu-row" id="zipNormal" data-i18n="zipAll">Download all</button>
+                        <button class="menu-row" id="zipSmart" data-i18n="zipSmart">Smart download</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <div class="list-wrap">
+            <ul id="list"></ul>
+        </div>
+        <div id="toast">
+            <div class="box">
+                <div id="toastText"></div>
+                <button id="toastOk" data-i18n="ok">OK</button>
+            </div>
+        </div>
+        <script src="popup.js"></script>
+    </body>
+</html>
