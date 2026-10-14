@@ -1,6 +1,6 @@
 {
   "extensionName": { "message": "image-basket" },
-  "extensionDescription": { "message": "Helps you put all standard media shown on pages into a basket and download them easily." },
+  "extensionDescription": { "message": "Collects standard media shown on web pages so you can easily download it." },
   "clear": { "message": "Clear" },
   "typeImage": { "message": "Image" },
   "typeVideo": { "message": "Video" },
@@ -19,13 +19,14 @@
   "statusTooBig": { "message": "Over 256MB" },
   "save": { "message": "Save" },
   "saveAgain": { "message": "Save again" },
-  "emptyNone": { "message": "No captured media.\nIf media is not captured, try a hard refresh with Cmd+Shift+R to bypass the cache.\nNote: Content on YouTube, Netflix, etc. is protected and cannot be captured." },
-  "emptyPage": { "message": "No media captured on this page.\nIf media is not captured, try a hard refresh with Cmd+Shift+R to bypass the cache.\nNote: Content on YouTube, Netflix, etc. is protected and cannot be captured." },
-  "emptyTab": { "message": "No media captured in this tab.\nIf media is not captured, try a hard refresh with Cmd+Shift+R to bypass the cache.\nNote: Content on YouTube, Netflix, etc. is protected and cannot be captured." },
+  "emptyNone": { "message": "No media has been captured.\nRefresh the page or scroll to load its media.\nDRM-protected media and unsupported streaming formats cannot be captured." },
+  "emptyPage": { "message": "No media has been captured on this page.\nRefresh the page or scroll to load its media.\nDRM-protected media and unsupported streaming formats cannot be captured." },
+  "emptyTab": { "message": "No media has been captured in this tab.\nRefresh the page or scroll to load its media.\nDRM-protected media and unsupported streaming formats cannot be captured." },
   "emptyOther": { "message": "\n($1 total | $2 in this tab)" },
   "error": { "message": "Error: " },
-  "zipSmartDone": { "message": "Smart selection: $1 items selected and downloaded" },
-  "zipSmartNone": { "message": "No selection results (no images or all filtered out)\nSmart download works best when downloading comics." },
-  "zipDone": { "message": "Saving $1 items as one ZIP" },
+  "saveFailed": { "message": "Could not start the download." },
+  "zipSmartStarted": { "message": "Started downloading a ZIP containing $1 selected images." },
+  "zipSmartNone": { "message": "No images were selected.\nSmart download works best for downloading comics." },
+  "zipStarted": { "message": "Started downloading a ZIP containing $1 items." },
   "zipNone": { "message": "No items to save" }
 }

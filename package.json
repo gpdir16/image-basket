@@ -1,9 +1,10 @@
 {
     "name": "image-basket",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "scripts": {
-        "build": "bunx web-ext build --source-dir . --overwrite-dest",
-        "lint": "bunx web-ext lint --source-dir .",
+        "test": "node --test *.test.js",
+        "build": "bunx web-ext build --source-dir . --overwrite-dest --ignore-files '*.test.js'",
+        "lint": "bunx web-ext lint --source-dir . --ignore-files '*.test.js'",
         "run": "bunx web-ext run --source-dir ."
     }
 }

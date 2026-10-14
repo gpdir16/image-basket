@@ -8,6 +8,11 @@ const STATUS = { ready: t("statusReady"), saving: t("statusSaving"), saved: t("s
 let bg = null;
 let filter = "page";
 let lastRev = -1;
+let lastFilter = null;
+let refreshId = 0;
+let pendingRefresh = null;
+let zipRunning = false;
+const pendingSaves = new Set();
 let counts = null; // {all, tab, page} — 제목 배지/빈 목록에 표시
 const thumbCache = new Map(); // itemId -> object URL — 재렌더해도 썸네일이 깜빡이지 않게 유지
 
@@ -35,7 +40,7 @@ function renderItem(it) {
     info.title = it.url;
     const name = document.createElement("div");
     name.className = "name";
-    name.textContent = it.filename;
+    name.textContent = it.downloadFilename || it.filename;
     const meta = document.createElement("div");
     meta.className = "meta";
     meta.textContent = `${it.host} · ${bg.fmtSize(it.size)} · ${STATUS[it.status] || ""}`;
@@ -44,9 +49,20 @@ function renderItem(it) {
     if (it.status === "ready" || it.status === "saved") {
         const btn = document.createElement("button");
         btn.textContent = it.status === "saved" ? t("saveAgain") : t("save");
-        btn.onclick = () => {
-            bg.saveItem(it.id);
-            refresh(false);
+        btn.disabled = pendingSaves.has(it.id);
+        btn.onclick = async () => {
+            if (pendingSaves.has(it.id)) return;
+            pendingSaves.add(it.id);
+            btn.disabled = true;
+            try {
+                if (!(await bg.saveItem(it.id, name.textContent))) setStatus(t("saveFailed"));
+            } catch (e) {
+                setStatus(t("error") + e.message);
+            } finally {
+                pendingSaves.delete(it.id);
+                await refresh(true);
+                btn.disabled = false;
+            }
         };
         li.appendChild(btn);
     }
@@ -92,14 +108,31 @@ function updateCounts() {
 async function refresh(force) {
     if (!bg) return;
     const rev = bg.getRevision();
-    if (!force && rev === lastRev) return; // 변경 없으면 재렌더 생략 — 깜빡임 방지
-    lastRev = rev;
+    const requestedFilter = filter;
+    if (!force) {
+        if (rev === lastRev && requestedFilter === lastFilter) return;
+        if (pendingRefresh && pendingRefresh.rev === rev && pendingRefresh.filter === requestedFilter) return;
+    } else {
+        // 강제 갱신이 실패해도 다음 주기에서 다시 시도하도록 캐시를 무효화
+        lastRev = -1;
+        lastFilter = null;
+    }
+    const id = ++refreshId;
+    pendingRefresh = { id, rev, filter: requestedFilter };
     try {
-        counts = await bg.getCounts(); // 배지/빈 목록 개수 갱신
+        const items = await bg.getItems(requestedFilter);
+        const nextCounts = await bg.getCounts();
+        // 페이지 검사 중 필터나 갱신 요청이 바뀌면 오래된 응답은 버림
+        if (id !== refreshId || requestedFilter !== filter) return;
+        counts = nextCounts;
         updateCounts();
-        render(await bg.getItems(filter));
+        render(items);
+        lastRev = rev;
+        lastFilter = requestedFilter;
     } catch (e) {
-        setStatus(t("error") + e.message);
+        if (id === refreshId && requestedFilter === filter) setStatus(t("error") + e.message);
+    } finally {
+        if (pendingRefresh && pendingRefresh.id === id) pendingRefresh = null;
     }
 }
 
@@ -140,16 +173,22 @@ function updateTypeLabel() {
 }
 
 async function runZip(kind) {
-    const btn = document.getElementById("zipAll");
-    btn.disabled = true;
+    if (!bg || zipRunning) return;
+    zipRunning = true;
+    const requestedFilter = filter;
+    const buttons = ["zipAll", "zipNormal", "zipSmart"].map((id) => document.getElementById(id));
+    buttons.forEach((btn) => { btn.disabled = true; });
     try {
-        const n = kind === "smart" ? await bg.smartZip(await bg.getItems(filter)) : await bg.zipAll(await bg.getItems(filter));
-        setStatus(kind === "smart" ? (n ? t("zipSmartDone", [String(n)]) : t("zipSmartNone")) : n ? t("zipDone", [String(n)]) : t("zipNone"));
+        const items = await bg.getItems(requestedFilter);
+        const n = kind === "smart" ? await bg.smartZip(items) : await bg.zipAll(items);
+        setStatus(kind === "smart" ? (n ? t("zipSmartStarted", [String(n)]) : t("zipSmartNone")) : n ? t("zipStarted", [String(n)]) : t("zipNone"));
     } catch (e) {
         setStatus(t("error") + e.message);
+    } finally {
+        zipRunning = false;
+        buttons.forEach((btn) => { btn.disabled = false; });
+        await refresh(true);
     }
-    btn.disabled = false;
-    refresh(false);
 }
 
 async function init() {
